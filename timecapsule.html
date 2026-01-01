@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Time Capsule</title>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
+    body { min-height:100vh; background:radial-gradient(circle at top,#0f2027,#000); color:#fff; display:flex; justify-content:center; align-items:center; flex-direction:column; }
+    .container { width:90%; max-width:420px; background:rgba(255,255,255,0.05); border-radius:18px; padding:25px; box-shadow:0 0 25px rgba(255,215,0,0.15); text-align:center; }
+    h1 { margin-bottom:10px; color:gold; text-shadow:0 0 10px rgba(255,215,0,0.6); }
+    p { font-size:14px; opacity:0.8; margin-bottom:20px; }
+    input, textarea, select, button { width:100%; margin-bottom:15px; padding:12px; border-radius:10px; border:none; outline:none; background:rgba(255,255,255,0.08); color:#fff; }
+    select { background:#0b0b0b; color:gold; box-shadow:0 0 8px rgba(255,215,0,0.25); }
+    select option { background:#000; color:gold; }
+    select.glow-year { box-shadow:0 0 15px rgba(255,215,0,0.8),0 0 30px rgba(255,215,0,0.6); }
+    textarea { resize:none; height:100px; }
+    button { cursor:pointer; background:linear-gradient(135deg,#d4af37,#ffd700); color:#000; font-weight:600; }
+    .lock-area { display:none; text-align:center; margin-top:20px; }
+    .lock { font-size:70px; display:inline-block; transition:transform 0.6s ease, opacity 0.6s ease; }
+    .shake { animation:shake 0.2s infinite; }
+    @keyframes shake { 0%{transform:translateX(0);}25%{transform:translateX(-3px);}50%{transform:translateX(3px);}75%{transform:translateX(-3px);}100%{transform:translateX(0);} }
+    .glow { text-shadow:0 0 var(--glow,20px) gold,0 0 calc(var(--glow,20px)*2) gold; animation:glowPulse 1.5s infinite; }
+    @keyframes glowPulse { 0%{opacity:0.6;}50%{opacity:1;}100%{opacity:0.6;} }
+    .countdown { margin-top:15px; font-size:14px; opacity:0.9; }
+    .author { margin-top:25px; font-size:12px; opacity:0.7; text-align:center; color:gold; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>🕰 Time Capsule</h1>
+    <p>Write a message for your future self</p>
+
+    <div id="form">
+      <input type="text" id="name" placeholder="Your name" />
+      <textarea id="message" placeholder="Message to future you..."></textarea>
+      <input type="password" id="password" placeholder="Set a password" />
+      <select id="year">
+        <option value="2026">2026</option>
+        <option value="2027">2027</option>
+        <option value="2028">2028</option>
+        <option value="2029">2029</option>
+        <option value="2030">2030</option>
+        <option value="2035">2035</option>
+        <option value="2040">2040</option>
+        <option value="2050">2050</option>
+      </select>
+      <button type="button" onclick="lockCapsule()">Lock Capsule</button>
+    </div>
+
+    <div class="lock-area" id="lockArea">
+      <div class="lock" id="lock">🔒</div>
+      <p class="countdown" id="countdown"></p>
+
+      <div id="unlockSection" style="display:none; margin-top:15px;">
+        <input type="password" id="unlockPassword" placeholder="Enter password to unlock" />
+        <button onclick="unlockCapsule()">Unlock</button>
+      </div>
+
+      <div id="revealedMessage" style="display:none; margin-top:15px; font-size:14px; opacity:0.9;"></div>
+    </div>
+  </div>
+
+  <div class="author">
+    Author: Deb Mondal | Published: 01-01-2026
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      let capsuleData = JSON.parse(localStorage.getItem('capsule'));
+      let countdownTimer = null;
+
+      function initLockArea(savedData) {
+        document.getElementById('form').style.display = 'none';
+        document.getElementById('lockArea').style.display = 'block';
+        const lock = document.getElementById('lock');
+        lock.className = 'lock glow';
+        document.getElementById('year').value = savedData.year;
+        document.getElementById('year').classList.add('glow-year');
+        startCountdown(savedData.year);
+        if (savedData.unlocked) {
+          document.getElementById('unlockSection').style.display = 'block';
+          document.getElementById('revealedMessage').style.display = 'block';
+          document.getElementById('revealedMessage').innerText = `Dear ${savedData.name},\n\n${savedData.message}`;
+        }
+      }
+
+      if (capsuleData) initLockArea(capsuleData);
+
+      window.lockCapsule = function () {
+        const name = document.getElementById('name').value.trim();
+        const message = document.getElementById('message').value.trim();
+        const password = document.getElementById('password').value;
+        const yearSelect = document.getElementById('year');
+        const year = yearSelect.value;
+
+        if (!name || !message || !password) { alert('Fill all fields'); return; }
+
+        capsuleData = { name, message, password, year, unlocked: false };
+        localStorage.setItem('capsule', JSON.stringify(capsuleData));
+        initLockArea(capsuleData);
+
+        const lock = document.getElementById('lock');
+        lock.classList.add('shake');
+        if (navigator.vibrate) navigator.vibrate([200,100,200]);
+        const sound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-lock-click-2854.mp3');
+        sound.volume = 0.3; sound.play();
+        setTimeout(() => { lock.classList.remove('shake'); }, 3000);
+      };
+
+      function startCountdown(year) {
+        if (countdownTimer) clearInterval(countdownTimer);
+        const target = new Date(`January 1, ${year} 00:00:00`).getTime();
+
+        countdownTimer = setInterval(() => {
+          const now = Date.now();
+          const remaining = target - now;
+          if (remaining <= 0) {
+            document.getElementById('countdown').innerText = '🔓 Capsule ready to unlock';
+            document.getElementById('unlockSection').style.display = 'block';
+            clearInterval(countdownTimer);
+            return;
+          }
+          const d = Math.floor(remaining / 86400000);
+          const h = Math.floor((remaining % 86400000)/3600000);
+          const m = Math.floor((remaining % 3600000)/60000);
+          const s = Math.floor((remaining % 60000)/1000);
+          document.getElementById('countdown').innerText = `${d}d ${h}h ${m}m ${s}s until unlock`;
+        },1000);
+      }
+
+      window.unlockCapsule = function () {
+        const input = document.getElementById('unlockPassword').value;
+        if (!capsuleData || input !== capsuleData.password) { alert('Wrong password'); return; }
+        capsuleData.unlocked = true;
+        localStorage.setItem('capsule', JSON.stringify(capsuleData));
+        document.getElementById('revealedMessage').style.display = 'block';
+        document.getElementById('revealedMessage').innerText = `Dear ${capsuleData.name},\n\n${capsuleData.message}`;
+      };
+    });
+  </script>
+
+</body>
+</html>
